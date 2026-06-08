@@ -1,327 +1,184 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ID Card PDF Maker</title>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-
-*{
-    box-sizing:border-box;
-    margin:0;
-    padding:0;
-    font-family:Arial,sans-serif;
-}
-
-body{
-    background:#f3f4f6;
-    padding:20px;
-}
-
+*{box-sizing:border-box;margin:0;padding:0;font-family:Arial,sans-serif}
+body{background:#f3f4f6;padding:20px}
 .container{
-    max-width:600px;
-    margin:auto;
-    background:white;
-    padding:20px;
-    border-radius:16px;
-    box-shadow:0 5px 20px rgba(0,0,0,.1);
+max-width:650px;margin:auto;background:#fff;padding:20px;
+border-radius:16px;box-shadow:0 5px 20px rgba(0,0,0,.1)
 }
-
-h1{
-    text-align:center;
-    margin-bottom:20px;
-}
-
-.section{
-    margin-bottom:20px;
-}
-
-label{
-    display:block;
-    font-weight:bold;
-    margin-bottom:8px;
-}
-
-input[type=file]{
-    width:100%;
-    margin-bottom:10px;
-}
-
+h1{text-align:center;margin-bottom:20px}
+.section{margin-bottom:20px}
+label{display:block;font-weight:bold;margin-bottom:8px}
+input[type=file]{width:100%;margin-bottom:10px}
 .preview{
-    width:100%;
-    height:220px;
-    border:1px solid #ddd;
-    border-radius:10px;
-    object-fit:contain;
-    background:#fafafa;
+width:100%;height:240px;border:1px solid #ddd;border-radius:10px;
+object-fit:contain;background:#fafafa
 }
-
 button{
-    width:100%;
-    padding:14px;
-    border:none;
-    border-radius:10px;
-    background:#2563eb;
-    color:white;
-    font-size:16px;
-    cursor:pointer;
+width:100%;padding:14px;border:none;border-radius:10px;
+background:#2563eb;color:#fff;font-size:16px;cursor:pointer
 }
-
-button:hover{
-    opacity:.9;
-}
-
-#status{
-    margin-top:15px;
-    text-align:center;
-    font-weight:bold;
-}
-
+#status{text-align:center;margin-top:15px;font-weight:bold}
 </style>
 </head>
 <body>
 
 <div class="container">
-
 <h1>ID Card PDF Maker</h1>
 
 <div class="section">
-
 <label>Front Side Image</label>
-
-<input
-type="file"
-id="front"
-accept="image/*">
-
-<img
-id="frontPreview"
-class="preview">
-
+<input type="file" id="front" accept="image/*">
+<img id="frontPreview" class="preview">
 </div>
 
 <div class="section">
-
 <label>Back Side Image</label>
-
-<input
-type="file"
-id="back"
-accept="image/*">
-
-<img
-id="backPreview"
-class="preview">
-
+<input type="file" id="back" accept="image/*">
+<img id="backPreview" class="preview">
 </div>
 
-<button onclick="generatePDF()">
-Generate PDF
-</button>
-
+<button onclick="generatePDF()">Generate PDF</button>
 <div id="status"></div>
-
 </div>
 
 <script>
-
-front.onchange=function(e){
-
-    if(e.target.files[0]){
-        frontPreview.src=
-        URL.createObjectURL(
-        e.target.files[0]
-        );
-    }
-
+front.onchange=e=>{
+ if(e.target.files[0])
+  frontPreview.src=URL.createObjectURL(e.target.files[0]);
 };
 
-back.onchange=function(e){
-
-    if(e.target.files[0]){
-        backPreview.src=
-        URL.createObjectURL(
-        e.target.files[0]
-        );
-    }
-
+back.onchange=e=>{
+ if(e.target.files[0])
+  backPreview.src=URL.createObjectURL(e.target.files[0]);
 };
 
 function loadImage(file){
+ return new Promise(resolve=>{
+   const img=new Image();
+   img.onload=()=>resolve(img);
+   img.src=URL.createObjectURL(file);
+ });
+}
 
-    return new Promise(resolve=>{
+function drawContain(ctx,img,x,y,boxW,boxH){
+ const scale=Math.min(boxW/img.width,boxH/img.height);
+ const w=img.width*scale;
+ const h=img.height*scale;
 
-        const img=new Image();
+ const dx=x+(boxW-w)/2;
+ const dy=y+(boxH-h)/2;
 
-        img.onload=()=>{
-            resolve(img);
-        };
-
-        img.src=
-        URL.createObjectURL(file);
-
-    });
-
+ ctx.drawImage(img,dx,dy,w,h);
 }
 
 async function generatePDF(){
 
-    const frontFile=
-    document.getElementById("front").files[0];
+ const frontFile=document.getElementById("front").files[0];
+ const backFile=document.getElementById("back").files[0];
 
-    const backFile=
-    document.getElementById("back").files[0];
+ if(!frontFile||!backFile){
+   alert("Please select both images.");
+   return;
+ }
 
-    if(!frontFile || !backFile){
+ status.innerText="Generating PDF...";
 
-        alert(
-        "Please select both images."
-        );
+ const img1=await loadImage(frontFile);
+ const img2=await loadImage(backFile);
 
-        return;
-    }
+ const canvas=document.createElement("canvas");
+ const ctx=canvas.getContext("2d");
 
-    status.innerText=
-    "Generating PDF...";
+ canvas.width=1240;
+ canvas.height=1754;
 
-    const img1=
-    await loadImage(frontFile);
+ ctx.fillStyle="white";
+ ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    const img2=
-    await loadImage(backFile);
+ const margin=80;
+ const gap=120;
 
-    const canvas=
-    document.createElement("canvas");
+ const cardWidth=1080;
+ const cardHeight=420;
 
-    const ctx=
-    canvas.getContext("2d");
+ ctx.fillStyle="#fff";
+ ctx.fillRect(margin,margin,cardWidth,cardHeight);
 
-    canvas.width=1240;
-    canvas.height=1754;
+ ctx.strokeStyle="#d5d5d5";
+ ctx.lineWidth=2;
+ ctx.strokeRect(margin,margin,cardWidth,cardHeight);
 
-    ctx.fillStyle="white";
-    ctx.fillRect(
-    0,
-    0,
-    canvas.width,
-    canvas.height
-    );
+ drawContain(
+   ctx,img1,
+   margin,margin,
+   cardWidth,cardHeight
+ );
 
-    const margin=80;
-    const gap=80;
+ const secondY=margin+cardHeight+gap;
 
-    const cardWidth=1080;
-    const cardHeight=500;
+ ctx.fillStyle="#fff";
+ ctx.fillRect(margin,secondY,cardWidth,cardHeight);
+ ctx.strokeRect(margin,secondY,cardWidth,cardHeight);
 
-    ctx.fillStyle="#ffffff";
+ drawContain(
+   ctx,img2,
+   margin,secondY,
+   cardWidth,cardHeight
+ );
 
-    ctx.fillRect(
-    margin-10,
-    margin-10,
-    cardWidth+20,
-    cardHeight+20
-    );
+ let quality=0.8;
+ let finalBlob;
 
-    ctx.drawImage(
-    img1,
-    margin,
-    margin,
-    cardWidth,
-    cardHeight
-    );
+ while(quality>=0.2){
 
-    const secondY=
-    margin+
-    cardHeight+
-    gap;
+   const imageData=canvas.toDataURL("image/jpeg",quality);
 
-    ctx.fillRect(
-    margin-10,
-    secondY-10,
-    cardWidth+20,
-    cardHeight+20
-    );
+   const {jsPDF}=window.jspdf;
 
-    ctx.drawImage(
-    img2,
-    margin,
-    secondY,
-    cardWidth,
-    cardHeight
-    );
+   const pdf=new jsPDF({
+      orientation:"portrait",
+      unit:"px",
+      format:[canvas.width,canvas.height]
+   });
 
-    let quality=0.8;
-    let finalBlob;
+   pdf.addImage(
+      imageData,
+      "JPEG",
+      0,0,
+      canvas.width,
+      canvas.height
+   );
 
-    while(quality>=0.2){
+   finalBlob=pdf.output("blob");
 
-        const imageData=
-        canvas.toDataURL(
-        "image/jpeg",
-        quality
-        );
+   if(finalBlob.size<=200*1024) break;
 
-        const { jsPDF }=
-        window.jspdf;
+   quality-=0.1;
+ }
 
-        const pdf=
-        new jsPDF({
-            orientation:"portrait",
-            unit:"px",
-            format:[
-                canvas.width,
-                canvas.height
-            ]
-        });
+ const url=URL.createObjectURL(finalBlob);
 
-        pdf.addImage(
-        imageData,
-        "JPEG",
-        0,
-        0,
-        canvas.width,
-        canvas.height
-        );
+ const a=document.createElement("a");
+ a.href=url;
+ a.download="id-card.pdf";
 
-        finalBlob=
-        pdf.output("blob");
+ document.body.appendChild(a);
+ a.click();
+ a.remove();
 
-        if(
-        finalBlob.size
-        <=
-        200*1024
-        ){
-            break;
-        }
-
-        quality-=0.1;
-    }
-
-    const url=
-    URL.createObjectURL(
-    finalBlob
-    );
-
-    const a=
-    document.createElement("a");
-
-    a.href=url;
-    a.download="id-card.pdf";
-
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-
-    status.innerText=
-    "Downloaded PDF ("+
-    (finalBlob.size/1024)
-    .toFixed(1)+
-    " KB)";
+ status.innerText=
+ "Downloaded PDF ("+
+ (finalBlob.size/1024).toFixed(1)+
+ " KB)";
 }
-
 </script>
 
 </body>
