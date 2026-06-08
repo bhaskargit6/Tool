@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Collage PDF Maker</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+body{
+    margin:0;
+    padding:20px;
+    font-family:Arial,sans-serif;
+    background:#f5f7fb;
+}
+
+.container{
+    max-width:700px;
+    margin:auto;
+    background:#fff;
+    padding:25px;
+    border-radius:16px;
+    box-shadow:0 10px 30px rgba(0,0,0,.08);
+}
+
+h1{
+    text-align:center;
+    margin-bottom:20px;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:15px;
+}
+
+.card{
+    border:2px dashed #d0d7e2;
+    border-radius:12px;
+    padding:15px;
+    text-align:center;
+}
+
+.card img{
+    width:100%;
+    max-height:250px;
+    object-fit:contain;
+    margin-top:10px;
+    display:none;
+}
+
+input[type=file]{
+    width:100%;
+}
+
+button{
+    width:100%;
+    margin-top:20px;
+    padding:14px;
+    border:none;
+    border-radius:10px;
+    background:#2563eb;
+    color:white;
+    font-size:16px;
+    cursor:pointer;
+}
+
+button:hover{
+    opacity:.9;
+}
+
+#status{
+    text-align:center;
+    margin-top:15px;
+    font-weight:bold;
+}
+
+@media(max-width:600px){
+    .grid{
+        grid-template-columns:1fr;
+    }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+<h1>Collage PDF Maker</h1>
+
+<div class="grid">
+
+<div class="card">
+<h3>Image 1 (Top)</h3>
+<input type="file" id="img1" accept="image/*">
+<img id="preview1">
+</div>
+
+<div class="card">
+<h3>Image 2 (Bottom)</h3>
+<input type="file" id="img2" accept="image/*">
+<img id="preview2">
+</div>
+
+</div>
+
+<button id="generateBtn">Generate PDF</button>
+
+<div id="status"></div>
+
+</div>
+
+<script>
+
+const preview1=document.getElementById("preview1");
+const preview2=document.getElementById("preview2");
+
+document.getElementById("img1").addEventListener("change",e=>{
+    showPreview(e.target.files[0],preview1);
+});
+
+document.getElementById("img2").addEventListener("change",e=>{
+    showPreview(e.target.files[0],preview2);
+});
+
+function showPreview(file,img){
+    if(!file)return;
+
+    const reader=new FileReader();
+
+    reader.onload=e=>{
+        img.src=e.target.result;
+        img.style.display="block";
+    };
+
+    reader.readAsDataURL(file);
+}
+
+function loadImage(file){
+    return new Promise(resolve=>{
+        const img=new Image();
+        img.onload=()=>resolve(img);
+        img.src=URL.createObjectURL(file);
+    });
+}
+
+document.getElementById("generateBtn")
+.addEventListener("click",generatePDF);
+
+async function generatePDF(){
+
+    const file1=document.getElementById("img1").files[0];
+    const file2=document.getElementById("img2").files[0];
+
+    if(!file1 || !file2){
+        alert("Please select both images.");
+        return;
+    }
+
+    const status=document.getElementById("status");
+    status.innerText="Generating PDF...";
+
+    const img1=await loadImage(file1);
+    const img2=await loadImage(file2);
+
+    const WIDTH=800;
+
+    const h1=img1.height*(WIDTH/img1.width);
+    const h2=img2.height*(WIDTH/img2.width);
+
+    const canvas=document.createElement("canvas");
+    canvas.width=WIDTH;
+    canvas.height=h1+h2;
+
+    const ctx=canvas.getContext("2d");
+
+    ctx.fillStyle="white";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    ctx.drawImage(img1,0,0,WIDTH,h1);
+    ctx.drawImage(img2,0,h1,WIDTH,h2);
+
+    let quality=0.8;
+    let pdfBlob;
+    let finalPdf;
+
+    while(quality>=0.2){
+
+        const imageData=
+        canvas.toDataURL(
+            "image/jpeg",
+            quality
+        );
+
+        const { jsPDF }=window.jspdf;
+
+        finalPdf=new jsPDF({
+            orientation:"portrait",
+            unit:"px",
+            format:[
+                canvas.width,
+                canvas.height
+            ]
+        });
+
+        finalPdf.addImage(
+            imageData,
+            "JPEG",
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+
+        pdfBlob=finalPdf.output("blob");
+
+        if(pdfBlob.size<=200*1024){
+            break;
+        }
+
+        quality-=0.1;
+    }
+
+    const url=URL.createObjectURL(pdfBlob);
+
+    const link=document.createElement("a");
+    link.href=url;
+    link.download="collage.pdf";
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setTimeout(()=>{
+        URL.revokeObjectURL(url);
+    },1000);
+
+    status.innerText=
+        "PDF Downloaded ("+
+        (pdfBlob.size/1024).toFixed(1)+
+        " KB)";
+}
+
+</script>
+
+</body>
+</html>
