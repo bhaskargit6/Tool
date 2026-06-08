@@ -1,27 +1,33 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Image Collage PDF Maker</title>
+<title>ID Card PDF Maker</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-body{
+
+*{
+    box-sizing:border-box;
     margin:0;
-    padding:20px;
+    padding:0;
     font-family:Arial,sans-serif;
-    background:#f5f7fb;
+}
+
+body{
+    background:#f3f4f6;
+    padding:20px;
 }
 
 .container{
-    max-width:700px;
+    max-width:600px;
     margin:auto;
-    background:#fff;
-    padding:25px;
+    background:white;
+    padding:20px;
     border-radius:16px;
-    box-shadow:0 10px 30px rgba(0,0,0,.08);
+    box-shadow:0 5px 20px rgba(0,0,0,.1);
 }
 
 h1{
@@ -29,34 +35,32 @@ h1{
     margin-bottom:20px;
 }
 
-.grid{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:15px;
+.section{
+    margin-bottom:20px;
 }
 
-.card{
-    border:2px dashed #d0d7e2;
-    border-radius:12px;
-    padding:15px;
-    text-align:center;
-}
-
-.card img{
-    width:100%;
-    max-height:250px;
-    object-fit:contain;
-    margin-top:10px;
-    display:none;
+label{
+    display:block;
+    font-weight:bold;
+    margin-bottom:8px;
 }
 
 input[type=file]{
     width:100%;
+    margin-bottom:10px;
+}
+
+.preview{
+    width:100%;
+    height:220px;
+    border:1px solid #ddd;
+    border-radius:10px;
+    object-fit:contain;
+    background:#fafafa;
 }
 
 button{
     width:100%;
-    margin-top:20px;
     padding:14px;
     border:none;
     border-radius:10px;
@@ -71,41 +75,52 @@ button:hover{
 }
 
 #status{
-    text-align:center;
     margin-top:15px;
+    text-align:center;
     font-weight:bold;
 }
 
-@media(max-width:600px){
-    .grid{
-        grid-template-columns:1fr;
-    }
-}
 </style>
 </head>
 <body>
 
 <div class="container">
 
-<h1>Collage PDF Maker</h1>
+<h1>ID Card PDF Maker</h1>
 
-<div class="grid">
+<div class="section">
 
-<div class="card">
-<h3>Image 1 (Top)</h3>
-<input type="file" id="img1" accept="image/*">
-<img id="preview1">
+<label>Front Side Image</label>
+
+<input
+type="file"
+id="front"
+accept="image/*">
+
+<img
+id="frontPreview"
+class="preview">
+
 </div>
 
-<div class="card">
-<h3>Image 2 (Bottom)</h3>
-<input type="file" id="img2" accept="image/*">
-<img id="preview2">
-</div>
+<div class="section">
+
+<label>Back Side Image</label>
+
+<input
+type="file"
+id="back"
+accept="image/*">
+
+<img
+id="backPreview"
+class="preview">
 
 </div>
 
-<button id="generateBtn">Generate PDF</button>
+<button onclick="generatePDF()">
+Generate PDF
+</button>
 
 <div id="status"></div>
 
@@ -113,89 +128,147 @@ button:hover{
 
 <script>
 
-const preview1=document.getElementById("preview1");
-const preview2=document.getElementById("preview2");
+front.onchange=function(e){
 
-document.getElementById("img1").addEventListener("change",e=>{
-    showPreview(e.target.files[0],preview1);
-});
+    if(e.target.files[0]){
+        frontPreview.src=
+        URL.createObjectURL(
+        e.target.files[0]
+        );
+    }
 
-document.getElementById("img2").addEventListener("change",e=>{
-    showPreview(e.target.files[0],preview2);
-});
+};
 
-function showPreview(file,img){
-    if(!file)return;
+back.onchange=function(e){
 
-    const reader=new FileReader();
+    if(e.target.files[0]){
+        backPreview.src=
+        URL.createObjectURL(
+        e.target.files[0]
+        );
+    }
 
-    reader.onload=e=>{
-        img.src=e.target.result;
-        img.style.display="block";
-    };
-
-    reader.readAsDataURL(file);
-}
+};
 
 function loadImage(file){
-    return new Promise(resolve=>{
-        const img=new Image();
-        img.onload=()=>resolve(img);
-        img.src=URL.createObjectURL(file);
-    });
-}
 
-document.getElementById("generateBtn")
-.addEventListener("click",generatePDF);
+    return new Promise(resolve=>{
+
+        const img=new Image();
+
+        img.onload=()=>{
+            resolve(img);
+        };
+
+        img.src=
+        URL.createObjectURL(file);
+
+    });
+
+}
 
 async function generatePDF(){
 
-    const file1=document.getElementById("img1").files[0];
-    const file2=document.getElementById("img2").files[0];
+    const frontFile=
+    document.getElementById("front").files[0];
 
-    if(!file1 || !file2){
-        alert("Please select both images.");
+    const backFile=
+    document.getElementById("back").files[0];
+
+    if(!frontFile || !backFile){
+
+        alert(
+        "Please select both images."
+        );
+
         return;
     }
 
-    const status=document.getElementById("status");
-    status.innerText="Generating PDF...";
+    status.innerText=
+    "Generating PDF...";
 
-    const img1=await loadImage(file1);
-    const img2=await loadImage(file2);
+    const img1=
+    await loadImage(frontFile);
 
-    const WIDTH=800;
+    const img2=
+    await loadImage(backFile);
 
-    const h1=img1.height*(WIDTH/img1.width);
-    const h2=img2.height*(WIDTH/img2.width);
+    const canvas=
+    document.createElement("canvas");
 
-    const canvas=document.createElement("canvas");
-    canvas.width=WIDTH;
-    canvas.height=h1+h2;
+    const ctx=
+    canvas.getContext("2d");
 
-    const ctx=canvas.getContext("2d");
+    canvas.width=1240;
+    canvas.height=1754;
 
     ctx.fillStyle="white";
-    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillRect(
+    0,
+    0,
+    canvas.width,
+    canvas.height
+    );
 
-    ctx.drawImage(img1,0,0,WIDTH,h1);
-    ctx.drawImage(img2,0,h1,WIDTH,h2);
+    const margin=80;
+    const gap=80;
+
+    const cardWidth=1080;
+    const cardHeight=500;
+
+    ctx.fillStyle="#ffffff";
+
+    ctx.fillRect(
+    margin-10,
+    margin-10,
+    cardWidth+20,
+    cardHeight+20
+    );
+
+    ctx.drawImage(
+    img1,
+    margin,
+    margin,
+    cardWidth,
+    cardHeight
+    );
+
+    const secondY=
+    margin+
+    cardHeight+
+    gap;
+
+    ctx.fillRect(
+    margin-10,
+    secondY-10,
+    cardWidth+20,
+    cardHeight+20
+    );
+
+    ctx.drawImage(
+    img2,
+    margin,
+    secondY,
+    cardWidth,
+    cardHeight
+    );
 
     let quality=0.8;
-    let pdfBlob;
-    let finalPdf;
+    let finalBlob;
 
     while(quality>=0.2){
 
         const imageData=
         canvas.toDataURL(
-            "image/jpeg",
-            quality
+        "image/jpeg",
+        quality
         );
 
-        const { jsPDF }=window.jspdf;
+        const { jsPDF }=
+        window.jspdf;
 
-        finalPdf=new jsPDF({
+        const pdf=
+        new jsPDF({
             orientation:"portrait",
             unit:"px",
             format:[
@@ -204,42 +277,49 @@ async function generatePDF(){
             ]
         });
 
-        finalPdf.addImage(
-            imageData,
-            "JPEG",
-            0,
-            0,
-            canvas.width,
-            canvas.height
+        pdf.addImage(
+        imageData,
+        "JPEG",
+        0,
+        0,
+        canvas.width,
+        canvas.height
         );
 
-        pdfBlob=finalPdf.output("blob");
+        finalBlob=
+        pdf.output("blob");
 
-        if(pdfBlob.size<=200*1024){
+        if(
+        finalBlob.size
+        <=
+        200*1024
+        ){
             break;
         }
 
         quality-=0.1;
     }
 
-    const url=URL.createObjectURL(pdfBlob);
+    const url=
+    URL.createObjectURL(
+    finalBlob
+    );
 
-    const link=document.createElement("a");
-    link.href=url;
-    link.download="collage.pdf";
+    const a=
+    document.createElement("a");
 
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    a.href=url;
+    a.download="id-card.pdf";
 
-    setTimeout(()=>{
-        URL.revokeObjectURL(url);
-    },1000);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
 
     status.innerText=
-        "PDF Downloaded ("+
-        (pdfBlob.size/1024).toFixed(1)+
-        " KB)";
+    "Downloaded PDF ("+
+    (finalBlob.size/1024)
+    .toFixed(1)+
+    " KB)";
 }
 
 </script>
